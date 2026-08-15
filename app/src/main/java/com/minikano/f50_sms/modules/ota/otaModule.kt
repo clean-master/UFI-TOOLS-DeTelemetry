@@ -1,7 +1,7 @@
 package com.minikano.f50_sms.modules.ota
 
 import android.content.Context
-import com.minikano.f50_sms.configs.AppMeta
+import com.minikano.f50_sms.BuildConfig
 import com.minikano.f50_sms.modules.BASE_TAG
 import com.minikano.f50_sms.utils.KanoLog
 import com.minikano.f50_sms.utils.KanoRequest
@@ -45,43 +45,51 @@ fun Route.otaModule(context: Context) {
     //检查更新
     get("/api/check_update") {
         try {
-            val path = "/UFI-TOOLS-UPDATE"
-            val downloadUrl = "${AppMeta.GLOBAL_SERVER_URL}/d$path/"
-            val changelogUrl = "${AppMeta.GLOBAL_SERVER_URL}/d$path/changelog.txt"
-
-            // 拉取 changelog 文本
-            val changelog = KanoRequest.getTextFromUrl(changelogUrl)
-
-            // 请求 alist 的 API
-            val requestBody = """
-            {
-                "path": "$path",
-                "password": "",
-                "page": 1,
-                "per_page": 0,
-                "refresh": false
+            val repository = BuildConfig.DETELEMETRY_REPOSITORY.trim()
+            val validRepository = Regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+            if (!validRepository.matches(repository)) {
+                call.respondText(
+                    """{"error":"DeTelemetry update repository is not configured"}""",
+                    ContentType.Application.Json,
+                    HttpStatusCode.ServiceUnavailable
+                )
+                return@get
             }
-        """.trimIndent()
 
-            val alistResponse = KanoRequest.postJson(
-                "${AppMeta.GLOBAL_SERVER_URL}/api/fs/list",
-                requestBody
-            )
+            val releaseText = KanoRequest.getTextFromUrl(
+                "https://api.github.com/repos/$repository/releases/latest"
+            ) ?: throw IllegalStateException("GitHub Releases is unavailable")
+            val release = JSONObject(releaseText)
+            val contents = org.json.JSONArray()
+            val assets = release.optJSONArray("assets")
 
-            val alistBody = alistResponse.body?.string()
-
-            val safeChangelog = changelog
-                ?.replace(Regex("\r?\n"), "<br>")
-                ?.let { JSONObject.quote(it) }
-
-            // 拼装 JSON 响应
-            val resultJson = """
-            {
-                "base_uri": "$downloadUrl",
-                "alist_res": $alistBody,
-                "changelog": $safeChangelog
+            if (assets != null) {
+                for (index in 0 until assets.length()) {
+                    val asset = assets.optJSONObject(index) ?: continue
+                    val name = asset.optString("name")
+                    val downloadUrl = asset.optString("browser_download_url")
+                    if (name.endsWith(".apk", ignoreCase = true) && downloadUrl.isNotBlank()) {
+                        contents.put(
+                            JSONObject()
+                                .put("name", name)
+                                .put("modified", asset.optString("updated_at"))
+                                .put("download_url", downloadUrl)
+                        )
+                    }
+                }
             }
-        """.trimIndent()
+
+            val resultJson = JSONObject()
+                .put("base_uri", "")
+                .put(
+                    "alist_res",
+                    JSONObject().put(
+                        "data",
+                        JSONObject().put("content", contents)
+                    )
+                )
+                .put("changelog", release.optString("body", ""))
+                .toString()
 
             call.response.headers.append("Access-Control-Allow-Origin", "*")
             call.respondText(resultJson, ContentType.Application.Json, HttpStatusCode.OK)

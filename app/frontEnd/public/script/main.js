@@ -4137,6 +4137,7 @@ function main_func() {
                 return {
                     name: content.name,
                     base_uri,
+                    download_url: content.download_url,
                     changelog
                 }
             }
@@ -4282,7 +4283,8 @@ function main_func() {
             const content = await queryUpdate()
             if (content) {
                 const { app_ver, app_ver_code } = await (await fetch(`${KANO_baseURL}/version_info`, { headers: common_headers })).json();
-                const { name, base_uri, changelog } = content;
+                const { name, base_uri, download_url, changelog } = content;
+                const updateUrl = download_url || (base_uri + name);
 
                 const version = name.match(/V(\d+\.\d+\.\d+)/i)?.[1];
                 const appVer = app_ver.match(/(\d+\.\d+\.\d+)/i)?.[1];
@@ -4322,8 +4324,8 @@ function main_func() {
                         if (!isLatest) {
                             doUpdateEl.style.backgroundColor = 'var(--dark-btn-color)'
                             doDownloadAPKEl.style.backgroundColor = 'var(--dark-btn-color)'
-                            doUpdateEl.onclick = () => handleUpdateSoftware(base_uri + name)
-                            doDownloadAPKEl.onclick = () => handleDownloadSoftwareLink(base_uri + name)
+                            doUpdateEl.onclick = () => handleUpdateSoftware(updateUrl)
+                            doDownloadAPKEl.onclick = () => handleDownloadSoftwareLink(updateUrl)
                         } else {
                             doUpdateEl.onclick = null
                             doDownloadAPKEl.onclick = null
@@ -4335,13 +4337,13 @@ function main_func() {
                             window.UFI_FORCE_ENABLE_UPDATE = false
                             doUpdateEl.style.backgroundColor = 'var(--dark-btn-color)'
                             doDownloadAPKEl.style.backgroundColor = 'var(--dark-btn-color)'
-                            doUpdateEl.onclick = () => handleUpdateSoftware(base_uri + name)
-                            doDownloadAPKEl.onclick = () => handleDownloadSoftwareLink(base_uri + name)
+                            doUpdateEl.onclick = () => handleUpdateSoftware(updateUrl)
+                            doDownloadAPKEl.onclick = () => handleDownloadSoftwareLink(updateUrl)
                         }
                     }
                     //获取changeLog
                     // if (!isLatest) {
-                    changelogTextContent.innerHTML = changelog
+                    changelogTextContent.textContent = changelog
                     // }
                     OTATextContent.innerHTML = `${isLatest ? `<div>${t('is_latest_version')}：V${app_ver} ${app_ver_code}</div>` : `<div>${t('found_update')}:${name}<br/>${date_str ? `${t('release_date')}：${date_str}` : ''}</div>`}`
 
@@ -4440,57 +4442,6 @@ function main_func() {
         }
 
     }
-
-    //开屏后检测更新
-    setTimeout(() => {
-        checkUpdateAction(true).then((res) => {
-            if (res) {
-                const { el, close } = createFixedToast('kano_new_ota', `
-                <div style="pointer-events:all;width:80vw;max-width:300px;">
-                <div class="title" style="margin:0" data-i18n="system_notice">${t('system_notice')}</div>
-                <div class="title" id="force_update_title" style="margin-top:10px;font-size:.6rem"><i data-i18n="force_update_desc">${t("force_update_desc")}</i></div>
-                <p>${`${t('found')} ${res.isForceUpdate ? t('sticky_update') : t('new_update')}：${res.text}`}</p>
-                <div style="display:flex;gap:10px">
-                    <button id="confirm_kano_new_ota_toast_btn" style="width:100%;font-size:.64rem;margin-top:5px" data-i18n="btn_update">${t("btn_update")}</button>
-                    <button id="close_kano_new_ota_toast_btn" style="width:100%;font-size:.64rem;margin-top:5px" data-i18n="cancel_btn">${t("cancel_btn")}(8)</button>
-                </div>
-                </div>
-                `, 'red')
-                const confirmBtn = el.querySelector("#confirm_kano_new_ota_toast_btn")
-                const closeBtn = el.querySelector("#close_kano_new_ota_toast_btn")
-                const forceUpdateTitle = el.querySelector("#force_update_title")
-
-                if (forceUpdateTitle) {
-                    forceUpdateTitle.style.display = res.isForceUpdate ? "" : "none"
-                }
-
-                if (confirmBtn) {
-                    let debounceTimer = null
-                    confirmBtn.onclick = () => {
-                        close()
-                        clearTimeout(debounceTimer)
-                        debounceTimer = setTimeout(() => {
-                            checkUpdateAction()
-                        }, 500);
-                    }
-                }
-                if (closeBtn) {
-                    let times = 7
-                    let interval = setInterval(() => {
-                        closeBtn.textContent = `${t("cancel_btn")}(${times--})`
-                        if (times < 0) {
-                            clearInterval(interval)
-                            close()
-                        }
-                    }, 1000);
-                    closeBtn.onclick = () => {
-                        close()
-                    }
-                }
-            }
-        })
-    }, 100);
-
 
     //初始化短信转发表单
     const initSmsForward = async (needSwitch = true, method = undefined) => {
@@ -6855,63 +6806,6 @@ echo ${flag ? '1' : '0'} > /sys/devices/system/cpu/cpu3/online
         }
     }
     initCheckWeakToken()
-
-    // 获取消息
-    const initMessage = async () => {
-        if (!(await initRequestData())) {
-            return null
-        }
-        try {
-            const api = 'https://api.kanokano.cn/ufi_tools_report'
-            const { device_id: uuid } = await (await fetch(`${KANO_baseURL}/device_id`, {
-                headers: common_headers
-            })).json()
-            if (uuid) {
-                const { message, has_read_message } = await (await fetch(`${KANO_baseURL}/proxy/--${api}/get_message/${uuid}`, {
-                    headers: common_headers
-                })).json()
-                if (has_read_message == true || has_read_message == "true") return
-                const { text } = parseDOM(message) //过滤掉远程任何的script脚本，防止远程任意代码自动执行
-                const { el, close } = createFixedToast('kano_message', `
-                    <div style="pointer-events:all;width:80vw;max-width:300px">
-                        <div class="title" style="margin:0" data-i18n="system_notice">${t('system_notice')}</div>
-                        <div style="margin:10px 0" id="kano_message_inner">${text}</div>
-                        <div style="text-align:right">
-                            <button style="font-size:.64rem" id="close_message_btn" data-i18n="pay_btn_dismiss">${t('pay_btn_dismiss')}</button>
-                        </div>
-                    </div>
-                    `)
-                const btn = el.querySelector('#close_message_btn')
-                if (!btn) {
-                    close()
-                    return
-                }
-                btn.onclick = async () => {
-                    try {
-                        const { has_read_message } = await (await fetch(`${KANO_baseURL}/proxy/--${api}/set_read_message/${uuid}`, {
-                            method: 'post',
-                            headers: common_headers
-                        })).json()
-                        if (has_read_message) {
-                            close()
-                        }
-                    } catch {
-                        try {
-                            const { has_read_message } = await (await fetch(`${api}/set_read_message/${uuid}`, {
-                                method: 'post'
-                            })).json()
-                            if (has_read_message) {
-                                close()
-                            }
-                        } catch { }
-                    } finally {
-                        close()
-                    }
-                }
-            }
-        } catch { }
-    }
-    initMessage()
 
     const togglePort = async (port, flag, isBootup = false, v6 = false) => {
         try {

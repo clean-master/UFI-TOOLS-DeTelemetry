@@ -1,3 +1,15 @@
+# UFI-TOOLS-DeTelemetry
+
+> UFI-TOOLS 的去遥测 Fork：移除已确认的后台设备信息上报和稳定设备 ID 消息轮询，并通过 GitHub Actions 自动同步上游、检查、签名和发布 APK。
+>
+> 去遥测范围、自动更新机制和签名要求见 [DETELEMETRY.md](DETELEMETRY.md)。原项目版权与 MIT 许可证保留不变。
+
+## 上游项目
+
+本项目基于 [kanoqwq/UFI-TOOLS](https://github.com/kanoqwq/UFI-TOOLS) 的 `http-server-version` 分支。以下为原项目说明。
+
+---
+
 # 🧰 UFI-TOOLS
 
 > 一款面向某兴随身WIFI（F50/U30 Air）的多功能管理与扩展工具  

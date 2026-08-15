@@ -2,6 +2,12 @@ import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import java.text.SimpleDateFormat
 import java.util.Date
 
+val detelemetryRepository = providers.gradleProperty("detelemetryRepository")
+    .orElse("")
+    .get()
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -58,6 +64,11 @@ android {
         // 动态生成 versionCode 为 yyyyMMdd 格式
         versionCode = SimpleDateFormat("yyyyMMdd").format(Date()).toInt()
         versionName = "4.1.1"
+        buildConfigField(
+            "String",
+            "DETELEMETRY_REPOSITORY",
+            "\"$detelemetryRepository\""
+        )
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -79,6 +90,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -105,7 +117,7 @@ android {
             variant.outputs.all {
                 val output = this as BaseVariantOutputImpl
 
-                val appName = "UFI-TOOLS_WEB"
+                val appName = "UFI-TOOLS-DeTelemetry"
                 val versionName = variant.versionName ?: variant.versionCode
                 val versionCode = variant.versionCode
                 val date = SimpleDateFormat("HHmm").format(Date())

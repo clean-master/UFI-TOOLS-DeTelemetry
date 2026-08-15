@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "UFI-TOOLS"
+rootProject.name = "UFI-TOOLS-DeTelemetry"
 include(":app")

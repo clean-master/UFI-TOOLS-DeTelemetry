@@ -1,0 +1,145 @@
+name: Upstream Sync
+
+on:
+  schedule:
+    - cron: "37 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.merge.outputs.changed }}
+      source_sha: ${{ steps.metadata.outputs.source_sha }}
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+
+    steps:
+      - name: Checkout de-telemetry branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge upstream safely
+        id: merge
+        env:
+          UPSTREAM_URL: https://github.com/kanoqwq/UFI-TOOLS.git
+          UPSTREAM_BRANCH: http-server-version
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch --no-tags upstream "$UPSTREAM_BRANCH"
+
+          if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          protected_revision="$(git rev-parse HEAD)"
+          if ! git merge --no-ff --no-commit "upstream/$UPSTREAM_BRANCH"; then
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/upstream-conflicts.txt"
+            git merge --abort
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git restore --source="$protected_revision" -- \
+            .github/workflows \
+            scripts/check-no-telemetry.sh \
+            DETELEMETRY.md
+          git add --all
+          git commit -m "chore: sync upstream $UPSTREAM_BRANCH"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "conflict=false" >> "$GITHUB_OUTPUT"
+
+      - name: Stop on merge conflict
+        if: steps.merge.outputs.conflict == 'true'
+        run: |
+          echo "Upstream changes conflict with the DeTelemetry patch set:" >&2
+          cat "$RUNNER_TEMP/upstream-conflicts.txt" >&2
+          exit 1
+
+      - name: Enforce de-telemetry policy
+        if: steps.merge.outputs.changed == 'true'
+        run: ./scripts/check-no-telemetry.sh
+
+      - name: Set up JDK 17
+        if: steps.merge.outputs.changed == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: gradle
+
+      - name: Set up Node.js 20
+        if: steps.merge.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/frontEnd/package-lock.json
+
+      - name: Install frontend dependencies
+        if: steps.merge.outputs.changed == 'true'
+        working-directory: app/frontEnd
+        run: npm ci
+
+      - name: Compile merged source
+        if: steps.merge.outputs.changed == 'true'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug \
+            -PdetelemetryRepository="${GITHUB_REPOSITORY}"
+
+      - name: Prepare release metadata
+        if: steps.merge.outputs.changed == 'true'
+        id: metadata
+        run: |
+          source_sha="$(git rev-parse HEAD)"
+          short_sha="${source_sha:0:7}"
+          version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts | head -n 1)"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v${version_name}-detelemetry.${short_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Push verified merge
+        if: steps.merge.outputs.changed == 'true'
+        run: git push origin "HEAD:${GITHUB_REF_NAME}"
+
+  release:
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    uses: ./.github/workflows/android-release.yml
+    with:
+      ref: ${{ needs.sync.outputs.source_sha }}
+      tag: ${{ needs.sync.outputs.release_tag }}
+    secrets: inherit
+
+  notify-failure:
+    needs: [sync, release]
+    if: always() && (needs.sync.result == 'failure' || needs.release.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update maintenance issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: Automated upstream sync requires attention
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          issue_number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$TITLE in:title" --json number --jq '.[0].number' 2>/dev/null || true)"
+          if [[ -n "$issue_number" ]]; then
+            gh issue comment "$issue_number" --repo "$GITHUB_REPOSITORY" --body "The latest upstream sync or signed release failed: $RUN_URL" || true
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "The upstream merge, privacy guard, build, or signed release failed. Review the workflow before publishing: $RUN_URL" || true
+          fi
