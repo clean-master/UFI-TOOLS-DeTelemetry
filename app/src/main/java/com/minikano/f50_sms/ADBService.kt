@@ -23,6 +23,7 @@ import com.minikano.f50_sms.utils.BatteryReceiver
 import com.minikano.f50_sms.utils.KanoLog
 import com.minikano.f50_sms.utils.KanoUtils
 import com.minikano.f50_sms.utils.KanoUtils.Companion.getVoLteState
+import com.minikano.f50_sms.utils.KanoUtils.Companion.isADBAutoBootUpEnabled
 import com.minikano.f50_sms.utils.KanoUtils.Companion.isUsbDebuggingEnabled
 import com.minikano.f50_sms.utils.KanoUtils.Companion.runAT
 import com.minikano.f50_sms.utils.KanoUtils.Companion.setVoLteState
@@ -318,9 +319,9 @@ class ADBService : Service() {
                 adbFile.setExecutable(true)
 
                 while (!serviceStopping && !Thread.currentThread().isInterrupted) {
-                    if (!isUsbDebuggingEnabled(context)) {
-                        updateAdbReady(false, "ADB 未启用")
-                        KanoLog.d(TAG, "ADB 未启用，等待系统设置变化")
+                    if (!isUsbDebuggingEnabled(context) && !isADBAutoBootUpEnabled(context)) {
+                        updateAdbReady(false, "ADB和无线adb自启开关都未启用")
+                        KanoLog.d(TAG, "ADB和无线adb自启开关都未启用，等待系统设置变化")
                         adbWakeSignal.take()
                         retryIndex = 0
                         continue
