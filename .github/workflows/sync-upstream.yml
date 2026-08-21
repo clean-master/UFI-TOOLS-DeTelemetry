@@ -48,11 +48,71 @@ jobs:
 
           protected_revision="$(git rev-parse HEAD)"
           if ! git merge --no-ff --no-commit "upstream/$UPSTREAM_BRANCH"; then
+            # A version bump can overlap with the fork-only BuildConfig field below it.
+            # Resolve only that exact shape; every other conflict remains blocking.
+            build_file="app/build.gradle.kts"
+            if git ls-files -u -- "$build_file" | grep -q .; then
+              python3 - "$build_file" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          build_file = Path(sys.argv[1])
+          contents = build_file.read_text()
+          conflict_pattern = re.compile(
+              r"^<<<<<<<[^\n]*\n(?P<ours>.*?)^=======\n(?P<theirs>.*?)^>>>>>>>[^\n]*(?:\n|$)",
+              re.MULTILINE | re.DOTALL,
+          )
+          version_pattern = re.compile(
+              r'^(?P<indent>[ \t]*)versionName = "(?P<version>[^"\r\n]+)"[ \t]*(?:\n|$)',
+              re.MULTILINE,
+          )
+          adopted_versions = []
+
+          def adopt_upstream_version(match):
+              ours = match.group("ours")
+              theirs = match.group("theirs")
+              ours_versions = list(version_pattern.finditer(ours))
+              theirs_versions = list(version_pattern.finditer(theirs))
+              theirs_remainder = version_pattern.sub("", theirs)
+
+              if (
+                  len(ours_versions) != 1
+                  or len(theirs_versions) != 1
+                  or theirs_remainder.strip()
+              ):
+                  return match.group(0)
+
+              upstream_version = theirs_versions[0].group("version")
+              adopted_versions.append(upstream_version)
+
+              def replace_version(version_match):
+                  indent = version_match.group("indent")
+                  return f'{indent}versionName = "{upstream_version}"\n'
+
+              return version_pattern.sub(replace_version, ours, count=1)
+
+          resolved = conflict_pattern.sub(adopt_upstream_version, contents)
+          if adopted_versions:
+              build_file.write_text(resolved)
+              print(
+                  "Automatically adopted upstream versionName: "
+                  + ", ".join(adopted_versions)
+              )
+          PY
+
+              if ! grep -Eq '^(<<<<<<<|=======|>>>>>>>)' "$build_file"; then
+                git add "$build_file"
+              fi
+            fi
+
             git diff --name-only --diff-filter=U > "$RUNNER_TEMP/upstream-conflicts.txt"
-            git merge --abort
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "conflict=true" >> "$GITHUB_OUTPUT"
-            exit 0
+            if [[ -s "$RUNNER_TEMP/upstream-conflicts.txt" ]]; then
+              git merge --abort
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "conflict=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
 
           git restore --source="$protected_revision" -- \
