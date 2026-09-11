@@ -201,7 +201,7 @@
     "close_btn": "Đóng",
     "plugin_modal_title": "Tính năng Plugin",
     "plugin_modal_tip": "Nội dung nhập hỗ trợ script, style và phần tử meta. Tổng dung lượng tất cả plugin không được vượt quá 4MB. Nhấp vào tên plugin để chỉnh sửa, bật hoặc tắt. Kéo bên trái để sắp xếp, xóa plugin ở bên phải.",
-    "plugin_modal_add_plugin_btn": "Thêm Plugin (tệp .txt)",
+    "plugin_modal_add_plugin_btn": "Thêm Plugin",
     "plugin_modal_export_btn": "Xuất tệp Plugin",
     "plugin_modal_clear_btn": "Xóa tất cả",
     "plugin_modal_submit_btn": "Gửi",

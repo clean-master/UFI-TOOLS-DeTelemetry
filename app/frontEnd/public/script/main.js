@@ -7959,9 +7959,9 @@ echo ${flag ? '1' : '0'} > /sys/devices/system/cpu/cpu3/online
             const voLTESwitchBtn = document.querySelector('#VoLTESwitchBtn')
             if (!voLTESwitchBtn) return
 
-            const res = await (await fetchWithTimeout(`${KANO_baseURL}/volte_status?slot=0`, {
+            const res = await (await fetchWithTimeout(`${KANO_baseURL}/volte_status`, {
                 method: "POST",
-                body: JSON.stringify({ enabled: voLTESwitchBtn.dataset.enabled == "1" ? "0" : "1" }),
+                body: JSON.stringify({ enabled: voLTESwitchBtn.dataset.enabled == "1" ? "0" : "1", slot: 0 }),
                 headers: common_headers
             })).json()
             if (res.result == "success") {
@@ -7980,9 +7980,9 @@ echo ${flag ? '1' : '0'} > /sys/devices/system/cpu/cpu3/online
             const voLTESwitchBtn1 = document.querySelector('#VoLTESwitchBtn1')
             if (!voLTESwitchBtn1) return
 
-            const res = await (await fetchWithTimeout(`${KANO_baseURL}/volte_status?slot=1`, {
+            const res = await (await fetchWithTimeout(`${KANO_baseURL}/volte_status`, {
                 method: "POST",
-                body: JSON.stringify({ enabled: voLTESwitchBtn1.dataset.enabled == "1" ? "0" : "1" }),
+                body: JSON.stringify({ enabled: voLTESwitchBtn1.dataset.enabled == "1" ? "0" : "1", slot: 1 }),
                 headers: common_headers
             })).json()
             if (res.result == "success") {
@@ -8001,9 +8001,9 @@ echo ${flag ? '1' : '0'} > /sys/devices/system/cpu/cpu3/online
             const voNRSwitchBtn = document.querySelector('#VoNRSwitchBtn')
             if (!voNRSwitchBtn) return
 
-            const res = await (await fetchWithTimeout(`${KANO_baseURL}/vonr_status?slot=0`, {
+            const res = await (await fetchWithTimeout(`${KANO_baseURL}/vonr_status`, {
                 method: "POST",
-                body: JSON.stringify({ enabled: voNRSwitchBtn.dataset.enabled == "1" ? "0" : "1" }),
+                body: JSON.stringify({ enabled: voNRSwitchBtn.dataset.enabled == "1" ? "0" : "1", slot: 0 }),
                 headers: common_headers
             })).json()
             if (res.result == "success") {
@@ -8022,9 +8022,9 @@ echo ${flag ? '1' : '0'} > /sys/devices/system/cpu/cpu3/online
             const voNRSwitchBtn1 = document.querySelector('#VoNRSwitchBtn1')
             if (!voNRSwitchBtn1) return
 
-            const res = await (await fetchWithTimeout(`${KANO_baseURL}/vonr_status?slot=1`, {
+            const res = await (await fetchWithTimeout(`${KANO_baseURL}/vonr_status`, {
                 method: "POST",
-                body: JSON.stringify({ enabled: voNRSwitchBtn1.dataset.enabled == "1" ? "0" : "1" }),
+                body: JSON.stringify({ enabled: voNRSwitchBtn1.dataset.enabled == "1" ? "0" : "1" , slot: 1 }),
                 headers: common_headers
             })).json()
             if (res.result == "success") {

@@ -203,7 +203,7 @@
     "close_btn": "关闭",
     "plugin_modal_title": "插件功能",
     "plugin_modal_tip": "填入的内容支持脚本、样式和meta元素，所有插件总大小最好不要超过4MB，点击插件名可编辑、启用与禁用; 左侧拖动排序，右侧删除插件",
-    "plugin_modal_add_plugin_btn": "添加插件(.txt文件)",
+    "plugin_modal_add_plugin_btn": "添加插件",
     "plugin_modal_export_btn": "一键导出插件文件",
     "plugin_modal_clear_btn": "一键清空",
     "plugin_modal_submit_btn": "提交",

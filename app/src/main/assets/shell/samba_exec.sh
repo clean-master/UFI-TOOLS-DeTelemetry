@@ -6,6 +6,9 @@ MAX_SIZE=$((4 * 1024 * 1024))  # 4MB = 4 * 1024 * 1024 bytes
 FLAG_FILE="/data/local/tmp/boot_once.flag"
 THRESHOLD=120  # uptime 120s
 
+SOCAT_GUARD_STAMP="/data/local/tmp/socat_guard.stamp"
+SOCAT_GUARD_INTERVAL=600  # socat 清理限频：10 分钟一次足够了
+ 
 SOCKET_DIR="/data/data/com.minikano.f50_sms/files"
 SOCKET_FILE="$SOCKET_DIR/kano_root_shell.sock"
 SOCAT_PATH="/data/data/com.minikano.f50_sms/files/socat"
@@ -203,6 +206,18 @@ socat_guard_once() {
     echo "[`date`] ------SOCAT_CLEANER_END!!------" >> "$LOG_FILE"
 }
 
+# socat 清理无需每 tick 跑，限频到 SOCAT_GUARD_INTERVAL
+run_socat_guard() {
+    _last=0
+    [ -f "$SOCAT_GUARD_STAMP" ] && _last="$(cat "$SOCAT_GUARD_STAMP" 2>/dev/null)"
+    case "$_last" in
+        ''|*[!0-9]*) _last=0 ;;
+    esac
+    [ $((now_ts - _last)) -ge "$SOCAT_GUARD_INTERVAL" ] || return 0
+    echo "$now_ts" > "$SOCAT_GUARD_STAMP"
+    socat_guard_once >> "$LOG_FILE" 2>&1 &
+}
+
 check_ttyd_running(){
   # try pgrep to check ttyd running
   if ! pgrep -f "ttyd --writable --port 1146 $LOGIN_PATH" > /dev/null; then
@@ -386,7 +401,7 @@ schedule_script() {
   check_log_file
   check_ttyd_running
   check_socat_running
-  socat_guard_once >> "$LOG_FILE" 2>&1 &
+  run_socat_guard
 }
 
 uptime_seconds=$(cut -d. -f1 /proc/uptime)
