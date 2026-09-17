@@ -1566,3 +1566,14 @@ function get5GBandInfo(band) {
         ? { ...item, band: `N${key}` }
         : { band: `N${key}`, mode: '', range: '', operator: '', i18nKey: `5g.band.n${key}` }
 }
+
+function escapeHtml(input) {
+    if (input == null) return '';
+
+    return String(input)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
