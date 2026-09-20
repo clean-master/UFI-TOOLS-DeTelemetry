@@ -48,11 +48,20 @@ fun Route.smsModule(context: Context) {
             val smtpTo = json.optString("smtp_to", "").trim()
             val smtpUsername = json.optString("smtp_username", "").trim()
             val smtpPassword = json.optString("smtp_password", "").trim()
+            // 发件邮箱（可选）：Resend / Mailjet / SMTP2GO 等服务商的「SMTP 认证用户名」与
+            // 「发件邮箱」是两个不同的值，必须单独提供。留空则回退为认证用户名。
+            val smtpFrom = json.optString("smtp_from", "").trim()
+            val smtpFromName = json.optString("smtp_from_name", "").trim()
             val shouldForwardDeviceInfo = json.optString("forward_dev_info", "0").trim()
 
 
             if (smtpTo.isEmpty() || smtpHost.isEmpty() || smtpUsername.isEmpty() || smtpPassword.isEmpty()) {
                 throw Exception("缺少必要参数")
+            }
+
+            // 填了发件邮箱就必须是合法邮箱地址，否则服务商一定拒收
+            if (smtpFrom.isNotEmpty() && !smtpFrom.contains("@")) {
+                throw Exception("发件邮箱格式不正确：$smtpFrom")
             }
 
             val sharedPrefs =
@@ -64,10 +73,15 @@ fun Route.smsModule(context: Context) {
                 putString("kano_smtp_to", smtpTo)
                 putString("kano_smtp_username", smtpUsername)
                 putString("kano_smtp_password", smtpPassword)
+                putString("kano_smtp_from", smtpFrom)
+                putString("kano_smtp_from_name", smtpFromName)
                 putString("kano_smtp_forward_device_info", shouldForwardDeviceInfo)
             }
 
-            KanoLog.d(TAG, "SMTP配置已保存：$smtpHost:$smtpPort [$smtpUsername]")
+            KanoLog.d(
+                TAG,
+                "SMTP配置已保存：$smtpHost:$smtpPort [认证用户：$smtpUsername] [发件人：${smtpFrom.ifEmpty { smtpUsername }}]"
+            )
 
             val test_msg = SmsInfo("1145141919810", "UFI-TOOLS TEST消息", System.currentTimeMillis())
             SmsPoll.forwardByEmail(test_msg, context)
@@ -99,18 +113,21 @@ fun Route.smsModule(context: Context) {
         val smtpTo = sharedPrefs.getString("kano_smtp_to", "") ?: ""
         val username = sharedPrefs.getString("kano_smtp_username", "") ?: ""
         val password = sharedPrefs.getString("kano_smtp_password", "") ?: ""
+        val from = sharedPrefs.getString("kano_smtp_from", "") ?: ""
+        val fromName = sharedPrefs.getString("kano_smtp_from_name", "") ?: ""
         val shouldForwardDeviceInfo = sharedPrefs.getString("kano_smtp_forward_device_info","0")?: "0"
 
-        val json = """
-        {
-            "smtp_host": "$smtpHost",
-            "smtp_port": "$smtpPort",
-            "smtp_to": "$smtpTo",
-            "smtp_username": "$username",
-            "smtp_password": "$password",
-            "forward_dev_info":"$shouldForwardDeviceInfo"
-        }
-    """.trimIndent()
+        // 用 JSONObject 序列化，避免密码/发件人名里出现引号时拼出非法 JSON
+        val json = JSONObject().apply {
+            put("smtp_host", smtpHost)
+            put("smtp_port", smtpPort)
+            put("smtp_to", smtpTo)
+            put("smtp_username", username)
+            put("smtp_password", password)
+            put("smtp_from", from)
+            put("smtp_from_name", fromName)
+            put("forward_dev_info", shouldForwardDeviceInfo)
+        }.toString()
 
         call.respondText(json, ContentType.Application.Json, HttpStatusCode.OK)
     }

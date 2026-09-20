@@ -500,7 +500,7 @@ GET /api/AT?command=AT%2BCGEQOSRDP%3D1&slot=0
 | 方法 | 路径                                | 描述                       | 参数                                                         | 是否认证 |
 | ---- | ----------------------------------- | -------------------------- | ------------------------------------------------------------ | -------- |
 | GET  | `/api/sms_forward_method`           | 获取当前转发渠道           | 无                                                           | 是       |
-| POST | `/api/sms_forward_mail`             | 配置 SMTP 邮件转发         | JSON：`{ "smtp_host", "smtp_port", "smtp_to", "smtp_username", "smtp_password", "forward_dev_info" }` | 是 |
+| POST | `/api/sms_forward_mail`             | 配置 SMTP 邮件转发         | JSON：`{ "smtp_host", "smtp_port", "smtp_to", "smtp_username", "smtp_password", "smtp_from", "smtp_from_name", "forward_dev_info" }` | 是 |
 | GET  | `/api/sms_forward_mail`             | 读取 SMTP 配置（**明文含密码**） | 无                                                     | 是       |
 | POST | `/api/sms_forward_curl`             | 配置 curl 命令转发         | JSON：`{ "curl_text": "..." }`                                | 是       |
 | GET  | `/api/sms_forward_curl`             | 读取 curl 转发配置         | 无                                                           | 是       |
@@ -517,6 +517,8 @@ GET /api/AT?command=AT%2BCGEQOSRDP%3D1&slot=0
 #### 参数说明
 
 - `POST /api/sms_forward_mail`：`smtp_host`、`smtp_to`、`smtp_username`、`smtp_password` 必填；`smtp_port` 缺省为 `"465"`；`forward_dev_info` 为 `"0"`/`"1"`（转发内容是否附带设备状态信息）。保存成功后会**立即发送一封测试邮件**（发件人标识 `1145141919810`，内容 `UFI-TOOLS TEST消息`）。
+- `smtp_from` / `smtp_from_name`（可选，本次新增）：分别表示**发件邮箱**与**发件人显示名**。部分邮件服务商的「SMTP 认证用户名」与「发件邮箱」不是同一个值 —— 例如 Resend 的用户名固定是 `resend`（密码才是 API Key）、Mailjet 用 API Key 当用户名、SMTP2GO 的用户名只是中继凭据，此时**必须显式填写 `smtp_from`**，否则服务商会以「发件地址/域名未验证」拒收。`smtp_from` 留空时回退为 `smtp_username`（兼容自建邮箱、QQ 邮箱等用户名即发件人的场景）；若填写则必须包含 `@`，否则接口返回 500 `{"error":"SMTP配置出错"}`。
+- SMTP 端口决定加密方式：`465` / `2465` / `8465` / `443` / `588` 走**隐式 SSL/TLS**（连接即握手），其余端口（`25` / `587` / `2525` / `2587` 等）走 **STARTTLS**（先明文再升级）。连接强制使用 TLSv1.2 及以上。
 - `POST /api/sms_forward_curl`：`curl_text` 为完整 curl 命令模板，**必须包含** `{{sms-body}}`、`{{sms-time}}`、`{{sms-from}}` 三个占位符，保存后会发送一次测试转发。
 - `POST /api/sms_forward_dingtalk`：`webhook_url` 必填；`secret` 为可选的加签密钥；保存后会发送测试消息。
 - `POST /api/sms_forward_blacklist`：`phone`（只允许数字与换行符，正则 `^[0-9\n]*$`，多个号码用换行分隔）与 `keywords`（多个关键词用换行分隔）两个键都必须存在；命中黑名单号码或关键词的短信不会被转发。

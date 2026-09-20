@@ -154,7 +154,11 @@ object SmsPoll {
             return
         }
 
-        val smtpClient = KanoSMTP(smtpHost, smtpPort, username, password)
+        // 发件人可以与认证用户不同（Resend/Mailjet/SMTP2GO 等），留空时 KanoSMTP 内部回退为 username
+        val smtpFrom = sharedPrefs.getString("kano_smtp_from", "") ?: ""
+        val smtpFromName = sharedPrefs.getString("kano_smtp_from_name", "") ?: ""
+
+        val smtpClient = KanoSMTP(smtpHost, smtpPort, username, password, smtpFrom, smtpFromName)
 
         KanoLog.d(TAG, "开始转发短信...(SMTP)")
 

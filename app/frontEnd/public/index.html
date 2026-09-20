@@ -668,6 +668,8 @@
 
                     <div class="title" style="margin: 10px 0;" data-i18n="status_section_device">设备属性</div>
                     <ul class="drag" id="draggable_props">
+                        <li draggable="true"><label><input type="checkbox" data-name="boot_time"><span
+                                    data-i18n="boot_time">开机时长</span></label></li>
                         <li draggable="true"><label><input type="checkbox" data-name="client_ip"><span
                                     data-i18n="client_ip">客户端IP</span></label></li>
                         <li draggable="true"><label><input type="checkbox" data-name="model"><span
@@ -1925,7 +1927,7 @@
                         font-size: .9rem;
                         max-width: 400px;">
                                     <div class="title" style="font-size: 12px;" data-i18n="smtp_hint">
-                                        接收方邮箱也可以是转发方邮箱
+                                        接收方邮箱也可以是转发方邮箱；发件邮箱留空则默认使用上面的用户名
                                     </div>
                                     <div class="item" style="margin: 10px auto;">
                                         <label style="
@@ -1950,6 +1952,23 @@
                             "><span data-i18n="smtp_username">用户：</span><input
                                                 style="flex: 1;padding: 4px 6px;width: 100%;" id="smtp_username"
                                                 name="smtp_username" type="text" placeholder="example@xx.com"></label>
+                                    </div>
+                                    <div class="item" style="margin: 10px auto;">
+                                        <label style="
+                                display: flex;
+                                align-items: center;
+                            "><span data-i18n="smtp_from">发件邮箱：</span><input
+                                                style="flex: 1;padding: 4px 6px;width: 100%;" id="smtp_from"
+                                                name="smtp_from" type="text"
+                                                placeholder="noreply@yourdomain.com"></label>
+                                    </div>
+                                    <div class="item" style="margin: 10px auto;">
+                                        <label style="
+                                display: flex;
+                                align-items: center;
+                            "><span data-i18n="smtp_from_name">发件人名：</span><input
+                                                style="flex: 1;padding: 4px 6px;width: 100%;" id="smtp_from_name"
+                                                name="smtp_from_name" type="text" placeholder="UFI-TOOLS"></label>
                                     </div>
                                     <div class="item" style="margin: 10px auto;">
                                         <label style="

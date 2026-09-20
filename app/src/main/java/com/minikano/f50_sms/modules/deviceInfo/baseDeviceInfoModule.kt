@@ -178,6 +178,8 @@ fun Route.baseDeviceInfoModule(context: Context) {
             batteryLevelRes = null
         }
 
+        val bootDurationMs = android.os.SystemClock.elapsedRealtime()
+
         val jsonResult = """
             {
                 "app_ver": "$versionNameRes",
@@ -202,7 +204,8 @@ fun Route.baseDeviceInfoModule(context: Context) {
                 "memInfo":$memInfo,
                 "current_now":$currentNow,
                 "voltage_now":$votageNow,
-                "is_reached_data_flow_limit":${AppMeta.isReachedDataFlowLimit}
+                "is_reached_data_flow_limit":${AppMeta.isReachedDataFlowLimit},
+                "boot_time":$bootDurationMs
             }
         """.trimIndent()
         call.response.headers.append("Access-Control-Allow-Origin", "*")

@@ -1567,6 +1567,29 @@ function get5GBandInfo(band) {
         : { band: `N${key}`, mode: '', range: '', operator: '', i18nKey: `5g.band.n${key}` }
 }
 
+const formatBootTime = (time) => {
+    const ms = Number(time)
+    if (!ms || ms < 0) return "0"
+
+    const secondMs = 1000
+    const minuteMs = secondMs * 60
+    const hourMs = minuteMs * 60
+    const dayMs = hourMs * 24
+
+    const day = Math.floor(ms / dayMs)
+
+    const remainAfterDay = ms % dayMs
+    const hr = Math.floor(remainAfterDay / hourMs)
+
+    const remainAfterHour = remainAfterDay % hourMs
+    const min = Math.floor(remainAfterHour / minuteMs)
+
+    const remainAfterMinute = remainAfterHour % minuteMs
+    const sec = Math.floor(remainAfterMinute / secondMs)
+
+    return `${day} ${t("time_d")} ${hr.toString().padStart(2, "0")} ${t("time_h")} ${min.toString().padStart(2, "0")} ${t("time_min")} ${sec.toString().padStart(2, "0")} ${t("time_s")}`
+}
+
 function escapeHtml(input) {
     if (input == null) return '';
 
